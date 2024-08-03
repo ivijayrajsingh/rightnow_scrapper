@@ -1,0 +1,6 @@
+Flask==2.0.1
+boto3==1.17.49
+requests==2.25.1
+Pillow==8.2.0
+selenium==3.141.0
+beautifulsoup4==4.9.3
