@@ -2,7 +2,7 @@ import os
 import boto3
 import requests
 from PIL import Image
-from io import BytesIO  # Import BytesIO here
+from io import BytesIO
 from botocore.exceptions import NoCredentialsError
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
@@ -14,7 +14,6 @@ import time
 from datetime import datetime
 from collections import OrderedDict
 from flask import Flask, request, jsonify
-import os
 from flask_cors import CORS, cross_origin
 
 app = Flask(__name__)
@@ -29,6 +28,7 @@ AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 def get_unique_elements(input_list):
     return list(OrderedDict.fromkeys(input_list))
 
+
 def convert_images_to_pdf(folder_name, id, title):
     id = int(int(id) / 100)
     images = [Image.open(os.path.join(folder_name, file)) for file in os.listdir(folder_name) if file.endswith(('png', 'jpg', 'jpeg', 'webp'))]
@@ -40,21 +40,19 @@ def convert_images_to_pdf(folder_name, id, title):
         return pdf_buffer, f"{title}_{id}.pdf"
     return None, None
 
+
 def folder_exists_on_s3(bucket, folder_name, aws_access_key_id, aws_secret_access_key, region_name):
-    # Initialize the S3 client
     s3 = boto3.client(
         's3',
         aws_access_key_id=aws_access_key_id,
         aws_secret_access_key=aws_secret_access_key,
         region_name=region_name
     )
-    
-    # Check if the folder exists by listing objects with the folder_name prefix
     result = s3.list_objects_v2(Bucket=bucket, Prefix=folder_name)
     return 'Contents' in result
 
+
 def download_images_to_s3(bucket, folder_name, image_urls, aws_access_key_id, aws_secret_access_key, region_name, id, title):
-    # Initialize the S3 client
     s3 = boto3.client(
         's3',
         aws_access_key_id=aws_access_key_id,
@@ -71,20 +69,16 @@ def download_images_to_s3(bucket, folder_name, image_urls, aws_access_key_id, aw
             response = requests.get(url, stream=True)
             response.raise_for_status()
 
-            # Define the image path within the S3 bucket
             image_name = f"image_{index + 1}.jpg"
             local_image_path = os.path.join(local_folder_path, image_name)
 
-            # Save image locally
             with open(local_image_path, 'wb') as out_file:
                 for chunk in response.iter_content(chunk_size=8192):
                     out_file.write(chunk)
 
-            # s3_key = f"{folder_name.replace('\\', '/')}//{image_name}"
             s3_key = f"{folder_name}/{image_name}"
-            # Upload the image to S3
             with open(local_image_path, 'rb') as data:
-                s3.upload_fileobj(data, bucket,s3_key)
+                s3.upload_fileobj(data, bucket, s3_key)
 
             print(f"Downloaded {url} to s3://{bucket}/{s3_key}")
         except requests.exceptions.RequestException as e:
@@ -92,64 +86,51 @@ def download_images_to_s3(bucket, folder_name, image_urls, aws_access_key_id, aw
         except NoCredentialsError:
             print("Credentials not available")
 
-    # Convert images to PDF and upload to S3
     pdf_buffer, pdf_name = convert_images_to_pdf(local_folder_path, id, title)
     s3_key_ = f"{folder_name.replace('\\', '/')}/{pdf_name}"
     if pdf_buffer:
-        s3.upload_fileobj(pdf_buffer, bucket,s3_key_)
+        s3.upload_fileobj(pdf_buffer, bucket, s3_key_)
         print(f"PDF uploaded to s3://{bucket}/{s3_key_}")
 
-# Define the main function
-def scrape_images(country, region):
 
+def scrape_images(country, region):
     AWS_DEFAULT_REGION = 'ap-south-1'
     AWS_BUCKET = 'needsandwants'
     folder_name = 'advertisement-flyer'
 
-    # Set up Chrome options
     chrome_options = Options()
-    chrome_options.add_argument("--headless")  # Run in headless mode if desired
+    chrome_options.add_argument("--headless")
     chrome_options.add_argument("--disable-gpu")
-    
-    # Specify the path to the ChromeDriver executable
-    service = Service(r'chromedriver.exe')  # Replace with your actual path
-    
-    # Initialize WebDriver
-    driver = webdriver.Chrome(service=service, options=chrome_options)
-    # driver = webdriver.Chrome(ChromeDriverManager().install())
 
-    # Create the URL
+    service = Service(r'chromedriver.exe')
+
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+
     url = f"https://d4donline.com/en/{country}/{region}/offers"
 
-    # Access the webpage
     driver.get(url)
     time.sleep(5)
 
-    # Locate the section containing the offers
     flairs = driver.find_elements(By.CLASS_NAME, 'grid-container')
     all_flair_links = flairs[0].find_elements(By.TAG_NAME, 'a')
 
-    # Process each flair link
     for flair_link in all_flair_links:
         title = flair_link.get_attribute('title')
-        trimmed_title = "_".join(title.split()[:8]) 
-        trimmed_title = trimmed_title[:10]  
+        trimmed_title = "_".join(title.split()[:8])
+        trimmed_title = trimmed_title[:10]
 
         href = flair_link.get_attribute('href')
         pattern = re.compile(r'/(\d+)/')
         unique_id = pattern.search(href).group(1)
 
-        # Check if the folder exists on S3
         base_folder = os.path.join(folder_name, trimmed_title, f"{datetime.now().strftime('%Y-%m-%d')}_{unique_id}").replace('\\', '/')
         if folder_exists_on_s3(AWS_BUCKET, base_folder, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION):
             print(f"Skipping scraping for {unique_id} as folder already exists on S3.")
             continue
 
-        # Fetch the HTML content of the offer page
         html = requests.get(href).text
         soup = BeautifulSoup(html, 'html.parser')
 
-        # Collect images
         images = []
         for each_picture in soup.find_all('picture', attrs={'class': 'offer-page'}):
             img_tag = each_picture.find('img')
@@ -162,11 +143,10 @@ def scrape_images(country, region):
 
         unique_images = get_unique_elements(images)
 
-        # Call the download_images_to_s3 function with all required arguments
         download_images_to_s3(AWS_BUCKET, base_folder, unique_images, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION, unique_id, trimmed_title)
 
-    # Close the browser
     driver.quit()
+
 
 @app.route('/scrape_images', methods=['POST'])
 def scrape_images_api():
@@ -175,12 +155,13 @@ def scrape_images_api():
     region = data.get('region')
     if not country or not region:
         return jsonify({"error": "Country and region are required parameters"}), 400
-    
+
     try:
         scrape_images(country, region)
         return jsonify({"message": "Scraping completed successfully"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 # if __name__ == '__main__':
 #     app.run(debug=True)
