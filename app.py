@@ -81,7 +81,7 @@ def download_images_to_s3(bucket, folder_name, image_urls, aws_access_key_id, aw
                     out_file.write(chunk)
 
             # s3_key = f"{folder_name.replace('\\', '/')}//{image_name}"
-           s3_key = f"{folder_name}/{image_name}"
+            s3_key = f"{folder_name}/{image_name}"
             # Upload the image to S3
             with open(local_image_path, 'rb') as data:
                 s3.upload_fileobj(data, bucket,s3_key)
