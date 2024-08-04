@@ -100,6 +100,7 @@ def download_images_to_s3(bucket, folder_name, image_urls, aws_access_key_id, aw
 
 # Define the main function
 def scrape_images(country, region):
+
     AWS_DEFAULT_REGION = 'ap-south-1'
     AWS_BUCKET = 'needsandwants'
     folder_name = 'advertisement-flyer'
@@ -128,7 +129,7 @@ def scrape_images(country, region):
     all_flair_links = flairs[0].find_elements(By.TAG_NAME, 'a')
 
     # Process each flair link
-    for flair_link in all_flair_links[4:5]:
+    for flair_link in all_flair_links:
         title = flair_link.get_attribute('title')
         trimmed_title = "_".join(title.split()[:8]) 
         trimmed_title = trimmed_title[:10]  
@@ -176,7 +177,7 @@ def scrape_images_api():
     
     try:
         scrape_images(country, region)
-        return jsonify({"message": "Scraping initiated successfully"}), 200
+        return jsonify({"message": "Scraping completed successfully"}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
