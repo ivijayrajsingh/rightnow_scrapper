@@ -81,7 +81,7 @@ def download_images_to_s3(bucket, folder_name, image_urls, aws_access_key_id, aw
                     out_file.write(chunk)
 
             # s3_key = f"{folder_name.replace('\\', '/')}//{image_name}"
-            s3_key = f"{folder_name.replace('\\\\', '/')}/{image_name}"
+           s3_key = f"{folder_name}/{image_name}"
             # Upload the image to S3
             with open(local_image_path, 'rb') as data:
                 s3.upload_fileobj(data, bucket,s3_key)
@@ -140,7 +140,7 @@ def scrape_images(country, region):
         unique_id = pattern.search(href).group(1)
 
         # Check if the folder exists on S3
-        base_folder = os.path.join(folder_name, trimmed_title, f"{datetime.now().strftime('%Y-%m-%d')}_{unique_id}")
+        base_folder = os.path.join(folder_name, trimmed_title, f"{datetime.now().strftime('%Y-%m-%d')}_{unique_id}").replace('\\', '/')
         if folder_exists_on_s3(AWS_BUCKET, base_folder, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION):
             print(f"Skipping scraping for {unique_id} as folder already exists on S3.")
             continue
