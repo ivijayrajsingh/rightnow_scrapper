@@ -106,7 +106,7 @@ def scrape_images(country, region):
 
     service = Service(r'chromedriver.exe')
 
-    driver = webdriver.Chrome(service=service, options=chrome_options)
+    driver = webdriver.Chrome(executable_path=r'chromedriver.exe', options=chrome_options)
 
     url = f"https://d4donline.com/en/{country}/{region}/offers"
 
