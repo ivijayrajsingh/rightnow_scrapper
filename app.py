@@ -87,7 +87,7 @@ def download_images_to_s3(bucket, folder_name, image_urls, aws_access_key_id, aw
             print("Credentials not available")
 
     pdf_buffer, pdf_name = convert_images_to_pdf(local_folder_path, id, title)
-    s3_key_ = f"{folder_name.replace('\\', '/')}/{pdf_name}"
+    s3_key_ = f"{folder_name}/{pdf_name}"
     if pdf_buffer:
         s3.upload_fileobj(pdf_buffer, bucket, s3_key_)
         print(f"PDF uploaded to s3://{bucket}/{s3_key_}")
